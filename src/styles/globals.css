@@ -40,3 +40,23 @@ a {
     color-scheme: dark;
   }
 }
+
+/* Modal art subtle animations */
+.modal-art {
+  animation: modalFloat 6s ease-in-out infinite, modalPulse 2.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(77, 217, 255, 0.8)) drop-shadow(0 0 18px rgba(77, 217, 255, 0.45));
+}
+
+.modal-art-wrap {
+  position: relative;
+}
+
+@keyframes modalFloat {
+  0%, 100% { transform: translateY(0px) }
+  50% { transform: translateY(-4px) }
+}
+
+@keyframes modalPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(77,217,255,0.7)) drop-shadow(0 0 16px rgba(77,217,255,0.35)); }
+  50% { filter: drop-shadow(0 0 10px rgba(77,217,255,0.95)) drop-shadow(0 0 26px rgba(77,217,255,0.55)); }
+}

@@ -13,9 +13,11 @@ export default function PixiGame({ onCanvasBoundsChange }) {
   const neonRef = useRef(null);
   const bgFadeRef = useRef(null);
   const burstTimerRef = useRef(null);
+  const modalEnterTimerRef = useRef(null);
 
   const [effectsOn, setEffectsOn] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalEnter, setModalEnter] = useState(false);
   const [canvasBounds, setCanvasBounds] = useState({
     left: 0,
     top: 0,
@@ -123,9 +125,14 @@ export default function PixiGame({ onCanvasBoundsChange }) {
         clearTimeout(burstTimerRef.current);
         burstTimerRef.current = null;
       }
+      if (modalEnterTimerRef.current) {
+        clearTimeout(modalEnterTimerRef.current);
+        modalEnterTimerRef.current = null;
+      }
       destroyEffects();
       fadeBackground(1.0, 700);
       setModalVisible(false);
+      setModalEnter(false);
       setEffectsOn(false);
     } else {
       createEffects();
@@ -141,7 +148,14 @@ export default function PixiGame({ onCanvasBoundsChange }) {
           sparksRef.current.destroy?.();
           sparksRef.current = null;
         }
+        // Prepare modal slide-in
+        setModalEnter(false);
         setModalVisible(true);
+        if (modalEnterTimerRef.current) clearTimeout(modalEnterTimerRef.current);
+        modalEnterTimerRef.current = setTimeout(() => {
+          setModalEnter(true);
+          modalEnterTimerRef.current = null;
+        }, 30);
         burstTimerRef.current = null;
       }, 2000);
       setEffectsOn(true);
@@ -173,6 +187,7 @@ export default function PixiGame({ onCanvasBoundsChange }) {
   useEffect(() => {
     return () => {
       if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+      if (modalEnterTimerRef.current) clearTimeout(modalEnterTimerRef.current);
     };
   }, []);
 
@@ -234,39 +249,45 @@ export default function PixiGame({ onCanvasBoundsChange }) {
                   gap: 8,
                   padding: 16,
                   pointerEvents: "auto",
+                  transition: "transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease",
+                  transform: modalEnter ? "translateY(0px)" : `translateY(-${Math.round(modalH * 0.25)}px)`,
+                  opacity: modalEnter ? 1 : 0,
                 }}
               >
-                <div
-                  style={{
-                    fontSize: Math.max(16, Math.round(modalH * 0.14)),
-                    fontWeight: 800,
-                    letterSpacing: 1,
-                    textShadow: "0 0 8px rgba(77,217,255,0.9)",
-                  }}
-                >
-                  Congratulations
-                </div>
-                <div
-                  style={{
-                    fontSize: Math.max(14, Math.round(modalH * 0.1)),
-                    fontWeight: 600,
-                    opacity: 0.95,
-                  }}
-                >
-                  You have won 8 Bonus Spins
-                </div>
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 10,
-                    width: "100%",
-                    textAlign: "center",
-                    fontSize: Math.max(12, Math.round(modalH * 0.085)),
-                    opacity: 0.8,
-                  }}
-                >
-                  Press anywhere to continue
-                </div>
+            <div style={{ transform: "translateY(-20px)", width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            {/* Subtle animated image area */}
+            <div
+              className="modal-art-wrap"
+              style={{ width: "min(40%, 320px)", position: "relative", marginBottom: 8 }}
+            >
+              <img
+                className="modal-art"
+                src="/imgs/bl1.png"
+                alt=""
+                style={{ width: "100%", display: "block" }}
+              />
+              {/* shimmer removed */}
+            </div>
+            <div
+              style={{
+                fontSize: Math.max(14, Math.round(modalH * 0.10)),
+                fontWeight: 800,
+                letterSpacing: 1,
+                textShadow: "0 0 6px rgba(77,217,255,0.8)",
+              }}
+            >
+              Congratulations
+            </div>
+            <div
+              style={{
+                fontSize: Math.max(12, Math.round(modalH * 0.075)),
+                fontWeight: 600,
+                opacity: 0.95,
+              }}
+            >
+              You have won 8 Bonus Spins
+            </div>
+            </div>
               </div>
             );
           })()}
