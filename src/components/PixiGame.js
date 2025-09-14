@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { initializePixiApp, createElectricEffects } from "./core/PixiSetup";
 import { GAME_HEIGHT, GAME_WIDTH } from "./constants";
+import WinModal from "./WinModal";
 
 export default function PixiGame({ onCanvasBoundsChange }) {
   const containerRef = useRef(null);
@@ -151,7 +152,8 @@ export default function PixiGame({ onCanvasBoundsChange }) {
         // Prepare modal slide-in
         setModalEnter(false);
         setModalVisible(true);
-        if (modalEnterTimerRef.current) clearTimeout(modalEnterTimerRef.current);
+        if (modalEnterTimerRef.current)
+          clearTimeout(modalEnterTimerRef.current);
         modalEnterTimerRef.current = setTimeout(() => {
           setModalEnter(true);
           modalEnterTimerRef.current = null;
@@ -213,84 +215,26 @@ export default function PixiGame({ onCanvasBoundsChange }) {
         }}
       >
         {/* Neon modal positioned to fit within the reel frame */}
-        {modalVisible &&
-          (() => {
-            const frame = reelFrameSpriteRef.current;
-            const scale = canvasBounds.scale || 1;
-            const fx = frame ? frame.x * scale : 0;
-            const fy = frame ? frame.y * scale : 0;
-            const fw = frame ? frame.width * scale : 0;
-            const fh = frame ? frame.height * scale : 0;
-            // Allow easy adjustment of modal size relative to frame
-            const modalW = fw * 0.9; // tweak as desired
-            const modalH = fh * 0.9; // tweak as desired
-            const mx = fx + (fw - modalW) / 2;
-            const my = fy + (fh - modalH) / 2;
-            return (
-              <div
-                style={{
-                  position: "absolute",
-                  left: `${mx}px`,
-                  top: `${my}px`,
-                  width: `${modalW}px`,
-                  height: `${modalH}px`,
-                  border: "2px solid #4dd9ff",
-                  borderRadius: 12,
-                  boxShadow:
-                    "0 0 12px rgba(77,217,255,0.9), 0 0 28px rgba(77,217,255,0.5)",
-                  background:
-                    "linear-gradient(180deg, rgba(10,16,24,0.85), rgba(10,16,24,0.75))",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#e6faff",
-                  textAlign: "center",
-                  gap: 8,
-                  padding: 16,
-                  pointerEvents: "auto",
-                  transition: "transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease",
-                  transform: modalEnter ? "translateY(0px)" : `translateY(-${Math.round(modalH * 0.25)}px)`,
-                  opacity: modalEnter ? 1 : 0,
-                }}
-              >
-            <div style={{ transform: "translateY(-20px)", width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            {/* Subtle animated image area */}
-            <div
-              className="modal-art-wrap"
-              style={{ width: "min(40%, 320px)", position: "relative", marginBottom: 8 }}
-            >
-              <img
-                className="modal-art"
-                src="/imgs/bl1.png"
-                alt=""
-                style={{ width: "100%", display: "block" }}
-              />
-              {/* shimmer removed */}
-            </div>
-            <div
-              style={{
-                fontSize: Math.max(14, Math.round(modalH * 0.10)),
-                fontWeight: 800,
-                letterSpacing: 1,
-                textShadow: "0 0 6px rgba(77,217,255,0.8)",
-              }}
-            >
-              Congratulations
-            </div>
-            <div
-              style={{
-                fontSize: Math.max(12, Math.round(modalH * 0.075)),
-                fontWeight: 600,
-                opacity: 0.95,
-              }}
-            >
-              You have won 8 Bonus Spins
-            </div>
-            </div>
-              </div>
-            );
-          })()}
+        {(() => {
+          const frame = reelFrameSpriteRef.current;
+          const scale = canvasBounds.scale || 1;
+          const frameRect = frame
+            ? {
+                x: frame.x * scale,
+                y: frame.y * scale,
+                width: frame.width * scale,
+                height: frame.height * scale,
+              }
+            : { x: 0, y: 0, width: 0, height: 0 };
+          return (
+            <WinModal
+              visible={modalVisible}
+              entering={modalEnter}
+              frameRect={frameRect}
+              onDismiss={() => setModalVisible(false)}
+            />
+          );
+        })()}
         <button
           onClick={handleToggleEffects}
           style={{
