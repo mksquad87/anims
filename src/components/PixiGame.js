@@ -7,18 +7,21 @@ export default function PixiGame({ onCanvasBoundsChange }) {
   const containerRef = useRef(null);
   const appRef = useRef(null);
   const bgSpriteRef = useRef(null);
-
   const reelFrameSpriteRef = useRef(null);
+
   const outlineRef = useRef(null);
   const sparksRef = useRef(null);
   const neonRef = useRef(null);
   const bgFadeRef = useRef(null);
   const burstTimerRef = useRef(null);
   const modalEnterTimerRef = useRef(null);
+  const fxPromiseRef = useRef(null);
+  const fxResolveRef = useRef(null);
 
   const [effectsOn, setEffectsOn] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalEnter, setModalEnter] = useState(false);
+
   const [canvasBounds, setCanvasBounds] = useState({
     left: 0,
     top: 0,
@@ -120,50 +123,6 @@ export default function PixiGame({ onCanvasBoundsChange }) {
     neonRef.current = neon;
   }
 
-  function handleToggleEffects() {
-    if (effectsOn) {
-      if (burstTimerRef.current) {
-        clearTimeout(burstTimerRef.current);
-        burstTimerRef.current = null;
-      }
-      if (modalEnterTimerRef.current) {
-        clearTimeout(modalEnterTimerRef.current);
-        modalEnterTimerRef.current = null;
-      }
-      destroyEffects();
-      fadeBackground(1.0, 700);
-      setModalVisible(false);
-      setModalEnter(false);
-      setEffectsOn(false);
-    } else {
-      createEffects();
-      fadeBackground(0.15, 700);
-      // After 2 seconds, stop outline and sparks but keep neon particles
-      if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
-      burstTimerRef.current = setTimeout(() => {
-        if (outlineRef.current) {
-          outlineRef.current.destroy?.();
-          outlineRef.current = null;
-        }
-        if (sparksRef.current) {
-          sparksRef.current.destroy?.();
-          sparksRef.current = null;
-        }
-        // Prepare modal slide-in
-        setModalEnter(false);
-        setModalVisible(true);
-        if (modalEnterTimerRef.current)
-          clearTimeout(modalEnterTimerRef.current);
-        modalEnterTimerRef.current = setTimeout(() => {
-          setModalEnter(true);
-          modalEnterTimerRef.current = null;
-        }, 30);
-        burstTimerRef.current = null;
-      }, 2000);
-      setEffectsOn(true);
-    }
-  }
-
   function fadeBackground(targetAlpha, durationMs = 600) {
     const app = appRef.current;
     const bg = bgSpriteRef.current;
@@ -190,8 +149,69 @@ export default function PixiGame({ onCanvasBoundsChange }) {
     return () => {
       if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
       if (modalEnterTimerRef.current) clearTimeout(modalEnterTimerRef.current);
+      if (fxResolveRef.current) {
+        const resolve = fxResolveRef.current;
+        fxResolveRef.current = null;
+        fxPromiseRef.current = null;
+        resolve(false);
+      }
     };
   }, []);
+
+  function handleToggleEffects() {
+    // Start sequence and return a promise that resolves on modal dismiss
+    if (effectsOn && fxPromiseRef.current) return fxPromiseRef.current;
+    fxPromiseRef.current = new Promise((resolve) => {
+      fxResolveRef.current = resolve;
+    });
+    createEffects();
+    fadeBackground(0.15, 700);
+    if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    burstTimerRef.current = setTimeout(() => {
+      if (outlineRef.current) {
+        outlineRef.current.destroy?.();
+        outlineRef.current = null;
+      }
+      if (sparksRef.current) {
+        sparksRef.current.destroy?.();
+        sparksRef.current = null;
+      }
+      // Prepare modal slide-in
+      setModalEnter(false);
+      setModalVisible(true);
+      if (modalEnterTimerRef.current)
+        clearTimeout(modalEnterTimerRef.current);
+      modalEnterTimerRef.current = setTimeout(() => {
+        setModalEnter(true);
+        modalEnterTimerRef.current = null;
+      }, 30);
+      burstTimerRef.current = null;
+    }, 2000);
+    setEffectsOn(true);
+    return fxPromiseRef.current;
+  }
+
+  function dismissModalAndCleanup() {
+    if (burstTimerRef.current) {
+      clearTimeout(burstTimerRef.current);
+      burstTimerRef.current = null;
+    }
+    if (modalEnterTimerRef.current) {
+      clearTimeout(modalEnterTimerRef.current);
+      modalEnterTimerRef.current = null;
+    }
+    destroyEffects();
+    fadeBackground(1.0, 700);
+    setModalVisible(false);
+    setModalEnter(false);
+    setEffectsOn(false);
+    if (fxResolveRef.current) {
+      const resolve = fxResolveRef.current;
+      fxResolveRef.current = null;
+      fxPromiseRef.current = null;
+      resolve(true);
+    }
+  }
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -202,9 +222,6 @@ export default function PixiGame({ onCanvasBoundsChange }) {
       />
       {/* Overlay that matches the canvas bounds for HUD/UI positioning */}
       <div
-        onClick={() => {
-          if (modalVisible) setModalVisible(false);
-        }}
         style={{
           position: "absolute",
           left: `${canvasBounds.left}px`,
@@ -231,19 +248,19 @@ export default function PixiGame({ onCanvasBoundsChange }) {
               visible={modalVisible}
               entering={modalEnter}
               frameRect={frameRect}
-              onDismiss={() => setModalVisible(false)}
+              onDismiss={dismissModalAndCleanup}
             />
           );
         })()}
         <button
-          onClick={handleToggleEffects}
+          onClick={() => void handleToggleEffects()}
           style={{
             position: "absolute",
             right: 12,
             bottom: 12,
             pointerEvents: "auto",
             padding: "8px 12px",
-            background: effectsOn ? "#1f2937" : "#374151",
+            background: effectsOn ? "#374151" : "#1f2937",
             color: "#e5e7eb",
             border: "1px solid rgba(255,255,255,0.2)",
             borderRadius: 6,
@@ -251,8 +268,9 @@ export default function PixiGame({ onCanvasBoundsChange }) {
             cursor: "pointer",
             opacity: 0.85,
           }}
+          disabled={effectsOn}
         >
-          {effectsOn ? "Disable FX" : "Enable FX"}
+          {effectsOn ? "Running..." : "Trigger FX"}
         </button>
       </div>
     </div>
